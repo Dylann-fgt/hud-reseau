@@ -1,0 +1,24 @@
+# ---------------------------------------------------------------------------
+#  Configuration réelle — ne doit JAMAIS entrer dans l'historique Git
+# ---------------------------------------------------------------------------
+# config.json porte l'adresse publique attendue, le nom de l'interface et celui
+# de la passerelle du tunnel : il désigne une installation précise. Il se
+# réécrit en plus tout seul à chaque déplacement du bandeau, ce qui polluerait
+# le diff. Seul config.example.json est versionné.
+config.json
+
+# ---------------------------------------------------------------------------
+#  Sorties locales
+# ---------------------------------------------------------------------------
+hud-erreur.log
+*.log
+
+# Raccourci posé par installer-demarrage.ps1 : chemins absolus du poste.
+*.lnk
+
+# ---------------------------------------------------------------------------
+#  Système
+# ---------------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store

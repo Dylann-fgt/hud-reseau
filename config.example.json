@@ -1,0 +1,14 @@
+{
+    "interface":            "wg0",
+    "gateway":              "10.0.0.1",
+    "expectedPublicIp":     "203.0.113.10",
+    "expectedLabel":        "VPS",
+    "linkIntervalSec":      3,
+    "gatewayIntervalSec":   15,
+    "publicIpIntervalSec":  90,
+    "position":             "bottom-center",
+    "offsetX":              24,
+    "offsetY":              24,
+    "opacity":              0.78,
+    "hideOnFullscreen":     true
+}

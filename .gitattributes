@@ -1,0 +1,19 @@
+# Ce dépôt ne contient que des fichiers exécutés sous Windows : ils sortent en
+# CRLF à la sortie de dépôt (checkout), quelle que soit la plateforme du clone.
+* text=auto
+
+*.ps1   text eol=crlf
+*.vbs   text eol=crlf
+*.json  text eol=crlf
+*.md    text eol=crlf
+
+# ATTENTION — les .ps1 de ce dépôt sont en UTF-8 AVEC BOM, et doivent le rester.
+# Git ne touche pas au BOM ; un éditeur, si. PowerShell 5.1 lit un .ps1 sans BOM
+# en ANSI : un tiret cadratin UTF-8 s'y décode alors en trois caractères dont le
+# dernier est un guillemet fermant, que le parseur accepte comme délimiteur de
+# chaîne. Le script ne meurt donc pas sur le caractère fautif mais trente lignes
+# plus loin, sur une parenthèse « manquante ».
+
+# EXCEPTION — lancer-hud.vbs doit rester SANS BOM et en pur ASCII. Windows Script
+# Host ne comprend pas le BOM UTF-8 (il n'accepte que l'UTF-16 avec BOM) et
+# refuserait d'exécuter le script. Les accents en ont donc été retirés.
