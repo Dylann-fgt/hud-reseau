@@ -22,3 +22,6 @@ hud-erreur.log
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Archives de release, publiées sur GitHub, pas versionnées
+dist/
