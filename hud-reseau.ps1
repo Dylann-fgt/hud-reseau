@@ -20,7 +20,7 @@ param([switch]$Parametres)
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
-$Version = '2.0.0'
+$Version = '2.1.0'
 
 # --- une seule instance ---------------------------------------------------------------
 # Relancer le HUD alors qu'il tourne (menu Démarrer, double-clic) ouvre ses paramètres :
@@ -149,7 +149,7 @@ $sonde = {
     $ping     = New-Object System.Net.NetworkInformation.Ping
 
     $dueLink = $dueGw = $duePub = [datetime]::MinValue
-    $lienPrecedent = 'unknown'
+    $lienPrecedent = 'unknown'; $reseauPrecedent = ''
 
     while (-not $sync.Stop) {
         $now = Get-Date
@@ -176,11 +176,20 @@ $sonde = {
                 # WireGuard supprime l'adaptateur quand le tunnel est désactivé.
                 $sync.Link = 'down'; $sync.TunIp = $null; $sync.Gw = $null; $sync.GwMs = $null
             }
-            # Le tunnel vient de changer d'état : l'IP publique a forcément bougé aussi.
-            if ($sync.Link -ne $lienPrecedent) {
-                $lienPrecedent = $sync.Link
+            # Empreinte des cartes actives et de leurs passerelles : brancher le câble d'un
+            # routeur qui tunnelise, ou passer en Wi-Fi, change la sortie SANS toucher à
+            # l'adaptateur WireGuard local. Sans ce contrôle, l'IP publique affichée resterait
+            # celle d'avant jusqu'à 90 s — un vert périmé.
+            $reseau = ([System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() |
+                Where-Object { $_.OperationalStatus -eq 'Up' -and $_.NetworkInterfaceType -ne 'Loopback' } |
+                ForEach-Object { $_.Id + '=' + (($_.GetIPProperties().GatewayAddresses |
+                                 ForEach-Object { $_.Address.IPAddressToString }) -join ',') } |
+                Sort-Object) -join ';'
+            # Le tunnel ou le réseau vient de changer : l'IP publique a forcément bougé aussi.
+            if ($sync.Link -ne $lienPrecedent -or $reseau -ne $reseauPrecedent) {
+                $lienPrecedent = $sync.Link; $reseauPrecedent = $reseau
                 $dueGw = $duePub = $now
-                $sync.PubIp = $null
+                $sync.PubIp = $null; $sync.PubAt = $null; $sync.PubErr = $null
             }
         }
 
@@ -836,9 +845,16 @@ function Save-Parametres {
 # =========================================================================================
 $etatAffiche = $null; $etatDepuis = Get-Date; $etatNotifie = $null
 
+# Tunnel en amont : pas d'adaptateur WireGuard sur le poste, mais on sort quand même par l'IP
+# attendue — c'est un routeur du réseau (le Mi 4A, par exemple) qui tunnelise pour tout le
+# monde. Seule l'IP de sortie le prouve : on ne voit ni ce tunnel ni sa passerelle.
 function Get-Etat {
     if ($sync.Link -eq 'unset') { return 'idle', 'à configurer' }
-    if ($sync.Link -eq 'down')  { return 'bad', 'VPN coupé' }
+    if ($sync.Link -eq 'down')  {
+        if (-not $sync.PubAt)   { return 'idle', 'mesure…' }
+        if ($cfg.expectedPublicIp -and $sync.PubIp -eq $cfg.expectedPublicIp) { return 'ok', 'VPN via routeur' }
+        return 'bad', 'VPN coupé'
+    }
     if ($sync.Link -ne 'up')    { return 'idle', 'mesure…' }
     if ($sync.Gw -eq $false)    { return 'warn', 'tunnel muet' }
     if (-not $sync.PubIp)       { return 'warn', 'VPN ?' }
@@ -849,7 +865,8 @@ function Get-Etat {
 function Get-DetailNotification([string]$libelle) {
     switch ($libelle) {
         'VPN actif'   { "Le trafic sort par $($cfg.expectedLabel) ($($sync.PubIp))." }
-        'VPN coupé'   { "Le tunnel $($cfg.interface) n'est plus monté." }
+        'VPN via routeur' { "Pas de tunnel sur ce poste, mais le trafic sort par $($cfg.expectedLabel) ($($sync.PubIp)) : le réseau tunnelise." }
+        'VPN coupé'   { "Ni tunnel $($cfg.interface) sur ce poste, ni sortie par $($cfg.expectedLabel) : le trafic sort par $(if($sync.PubIp){$sync.PubIp}else{'une adresse inconnue'})." }
         'tunnel muet' { "Le tunnel est monté, mais la passerelle $($cfg.gateway) ne répond plus." }
         'hors tunnel' { "Le tunnel est monté, mais le trafic sort par $($sync.PubIp) au lieu de $($cfg.expectedPublicIp)." }
         'VPN ?'       { "Le tunnel est monté, mais l'IP publique ne peut pas être mesurée." }
@@ -870,6 +887,7 @@ function Update-Hud {
     # infobulle
     $l = New-Object Collections.Generic.List[string]
     $l.Add("Tunnel     $($cfg.interface) — $(if($sync.Link -eq 'up'){'monté'}else{'absent'})")
+    if ($libelle -eq 'VPN via routeur') { $l.Add('           tunnel fait en amont, par le réseau (routeur)') }
     if ($sync.TunIp) { $l.Add("Adresse    $($sync.TunIp)") }
     if ($sync.Link -eq 'up') {
         $g = if (-not $cfg.gateway) { 'non renseignée' }

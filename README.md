@@ -27,14 +27,15 @@ Le HUD répond aux deux, en croisant **trois sondes indépendantes** :
 | ping de la passerelle du tunnel | le tunnel **passe du trafic** | 15 s |
 | IP publique observée, comparée à celle attendue | la sortie se fait **bien par le VPN** | 90 s |
 
-D'où quatre cas — dont un que l'icône WireGuard ne montre jamais :
+D'où cinq cas — dont un que l'icône WireGuard ne montre jamais :
 
 | | Condition | Affichage |
 |---|---|---|
 | 🟢 | les trois sondes concordent | `VPN actif` |
 | 🟠 | interface up, passerelle muette | `tunnel muet` |
 | 🟠 | interface up, **IP publique ≠ celle attendue** | **`hors tunnel`** — fuite, tunnel partiel, ou route cassée |
-| 🔴 | adaptateur absent ou down | `VPN coupé` |
+| 🟢 | adaptateur absent, **mais IP publique = celle attendue** | `VPN via routeur` — un routeur du réseau tunnelise pour tout le monde |
+| 🔴 | adaptateur absent, et sortie par une autre IP | `VPN coupé` |
 
 **`hors tunnel` est la raison d'être de l'outil.**
 
