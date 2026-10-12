@@ -6,9 +6,11 @@
     "linkIntervalSec":      3,
     "gatewayIntervalSec":   15,
     "publicIpIntervalSec":  90,
+    "showBar":              true,
     "position":             "bottom-center",
-    "offsetX":              24,
-    "offsetY":              24,
+    "offsetX":              0,
+    "offsetY":              12,
     "opacity":              0.78,
-    "hideOnFullscreen":     true
+    "hideOnFullscreen":     true,
+    "notify":               true
 }

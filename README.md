@@ -1,10 +1,11 @@
 # HUD Réseau
 
-Un bandeau discret posé en bas de l'écran, qui affiche en permanence l'**IP publique du
-poste** et l'**état réel du tunnel WireGuard**.
+L'**IP publique du poste** et l'**état réel du tunnel WireGuard**, affichés en permanence
+dans un bandeau discret en bas de l'écran **et** par une icône dans la zone de notification,
+près de l'horloge.
 
-Écrit en **PowerShell 5.1 + WPF** (rien à installer, tout est dans Windows). Un seul
-fichier de script, un seul fichier de configuration. **Aucune élévation requise.**
+Écrit en **PowerShell 5.1 + WPF** (rien à installer, tout est dans Windows). Un installateur
+par utilisateur, une fenêtre de paramètres. **Aucune élévation requise.**
 
 ---
 
@@ -41,68 +42,101 @@ D'où quatre cas — dont un que l'icône WireGuard ne montre jamais :
 
 ## Installation
 
+**Double-clic sur `Installer.cmd`.** L'assistant installe — ou met à jour — le HUD pour
+le compte courant, sans droit administrateur, et le lance.
+
+| Ce qu'il écrit | Où |
+|---|---|
+| le programme | `%LOCALAPPDATA%\Programs\HUD-Reseau\` |
+| le raccourci | menu Démarrer › **HUD Réseau** |
+| le lancement à l'ouverture de session *(case à cocher)* | dossier Démarrage |
+| l'entrée de désinstallation | Paramètres › Applications › **Applications installées** |
+
+Ni registre machine, ni service, ni tâche planifiée. Les raccourcis visent `wscript.exe` :
+`lancer-hud.vbs` démarre le script **sans faire clignoter de fenêtre console**.
+
+Sans assistant :
+
 ```powershell
-git clone https://github.com/Dylann-fgt/hud-reseau.git
-cd hud-reseau
-
-# Premier lancement : crée config.json depuis le modèle, puis s'arrête.
-wscript.exe lancer-hud.vbs
-
-# Renseigne au minimum interface / gateway / expectedPublicIp, puis relance.
-notepad config.json
-wscript.exe lancer-hud.vbs
+.\installer.ps1 -Silencieux       # installe, démarrage automatique, lance le HUD
+.\installer.ps1 -Desinstaller     # désinstalle (propose de garder les réglages)
 ```
 
-Démarrage automatique à l'ouverture de session :
+Une mise à jour arrête proprement le HUD en cours — par un signal nommé, sans tuer de
+processus — et **conserve les réglages**.
 
-```powershell
-.\installer-demarrage.ps1            # pose un raccourci dans le dossier Démarrage
-.\installer-demarrage.ps1 -Retirer   # l'enlève
-```
+**Une seule instance à la fois.** Relancer le HUD alors qu'il tourne (menu Démarrer,
+double-clic) ouvre sa fenêtre de paramètres au lieu d'en démarrer un deuxième.
 
-Le raccourci vise `wscript.exe`, pas `powershell.exe` : `lancer-hud.vbs` démarre le script
-**sans faire clignoter de fenêtre console**. Aucune écriture hors du profil courant — ni
-registre machine, ni tâche planifiée, ni service.
+### Antivirus
 
-**Une seule instance à la fois** : un mutex nommé bloque les doublons, silencieusement.
+Un script PowerShell qui se copie dans `AppData`, démarre caché et se lance à l'ouverture de
+session ressemble, vu de loin, à ce que fait un logiciel malveillant. **Bitdefender
+(Advanced Threat Control, `Atc4.Detection`) a bloqué la première version de l'installateur**
+et mis en quarantaine le script *et ses sources*. L'installateur ne fait plus ce qui
+l'avait alerté — retirer la marque « provenant d'Internet » (`Unblock-File`), énumérer puis
+tuer des processus — mais une alerte comportementale reste possible. Si elle survient :
+restaurer depuis la quarantaine, puis ajouter une exception sur le dossier d'installation.
+Une restauration laisse les fichiers **verrouillés en écriture** jusqu'au redémarrage.
 
 ---
 
-## Configuration — `config.json`
+## Premier lancement et paramètres
 
-Le dépôt versionne **`config.example.json`**. Le premier lancement en fait une copie de
-travail nommée `config.json`, qui n'est **pas** versionnée : elle désigne une installation
-précise, et le HUD la réécrit tout seul à chaque fois qu'on déplace le bandeau.
+Au premier lancement, la **fenêtre de paramètres** s'ouvre seule. On la retrouve ensuite par
+un **clic gauche sur l'icône** de notification, ou clic droit › *Paramètres…*
+
+- **Interface WireGuard** — bouton *Détecter* : liste les tunnels actifs et propose la
+  passerelle (première adresse du réseau du tunnel — à vérifier). WireGuard **retire
+  l'adaptateur quand le tunnel est désactivé** : il faut l'activer pour le détecter.
+- **IP publique attendue** — bouton *IP actuelle* : reprend l'IP de sortie mesurée. Le HUD
+  prévient si le tunnel n'est pas monté à ce moment-là — on reprendrait l'adresse de la box.
+- fréquence des trois sondes, bandeau (affiché ou non, position, opacité, effacement devant
+  le plein écran), notifications, lancement à l'ouverture de session.
+
+Les réglages vivent dans **`%APPDATA%\HUD-Reseau\config.json`**, hors du dossier
+d'installation : une mise à jour ne les touche pas. Le dépôt versionne
+`config.example.json`, qui documente les clés ; un `config.json` laissé à côté du script par
+la version 1 est repris automatiquement au premier lancement.
 
 | Clé | Effet |
 |---|---|
 | `interface` | nom exact de l'adaptateur WireGuard, tel que Windows le nomme |
-| `gateway` | adresse à pinguer **dans** le tunnel (l'extrémité serveur) |
-| `expectedPublicIp` | l'IP publique attendue quand le VPN travaille — celle du serveur de sortie |
-| `expectedLabel` | libellé affiché en face de cette IP dans l'infobulle |
-| `linkIntervalSec` | cadence de la sonde d'adaptateur (défaut **3 s**) |
-| `gatewayIntervalSec` | cadence du ping de passerelle (défaut **15 s**) |
-| `publicIpIntervalSec` | cadence de la mesure d'IP publique (défaut **90 s**) |
+| `gateway` | adresse à pinguer **dans** le tunnel (l'extrémité serveur) ; vide = pas de ping |
+| `expectedPublicIp` | l'IP publique attendue quand le VPN travaille ; vide = pas de comparaison |
+| `expectedLabel` | nom de cette sortie, affiché dans l'infobulle et les notifications |
+| `linkIntervalSec` / `gatewayIntervalSec` / `publicIpIntervalSec` | cadences (défaut **3 / 15 / 90 s**) |
+| `showBar` | affiche le bandeau ; l'icône de notification, elle, reste toujours |
 | `position` | `bottom-center`, `bottom-right`, ou `custom` (écrit tout seul après un glisser) |
 | `offsetX` / `offsetY` | marges — ou coordonnées absolues si `position` vaut `custom` |
-| `opacity` | opacité au repos ; le survol repasse à 1.0 |
+| `opacity` | opacité du bandeau au repos ; le survol repasse à 1.0 |
 | `hideOnFullscreen` | efface le bandeau devant une application plein écran |
-
-Pour retrouver le nom exact de l'adaptateur :
-
-```powershell
-Get-NetAdapter | Where-Object InterfaceDescription -like '*WireGuard*' | Select-Object Name, Status
-```
+| `notify` | notification Windows quand l'état change |
 
 ---
 
 ## Interactions
 
-- **glisser** — déplacer le bandeau ; la position est enregistrée dans `config.json`
+**Icône de notification** — sa pastille prend la couleur de l'état.
+
+- **survol** — état et IP publique
+- **clic gauche** — paramètres
+- **clic droit** — état · rafraîchir · copier l'IP publique · afficher le bandeau · position ·
+  effacement en plein écran · notifications · lancement à l'ouverture de session ·
+  paramètres · quitter
+- **notification** quand l'état change et le reste **8 s** — pas pour l'état constaté au
+  démarrage, qui n'est pas un changement
+
+Windows 11 range toute nouvelle icône sous la flèche **^**. Le HUD la sort **une fois**, à sa
+première apparition ; si on la remet ensuite dans le débordement, il ne la touche plus.
+
+**Bandeau**
+
+- **glisser** — déplacer ; la position est enregistrée
 - **survol** — opacité pleine, et une infobulle détaillée : adresse dans le tunnel, latence
   vers la passerelle, octets reçus depuis le montage, heure de la dernière mesure d'IP
-- **clic droit** — rafraîchir tout de suite · replacer au centre / à droite · copier l'IP
-  publique · quitter
+- **clic droit** — rafraîchir · copier l'IP · replacer · masquer · paramètres · quitter
+- **Alt+F4** masque le bandeau sans arrêter le HUD
 
 ---
 
@@ -122,7 +156,14 @@ Get-NetAdapter | Where-Object InterfaceDescription -like '*WireGuard*' | Select-
   trop tard.
 - **Hors Alt+Tab** via le style étendu `WS_EX_TOOLWINDOW`. Un bandeau permanent n'a rien à
   faire dans le sélecteur de fenêtres.
-- **S'efface devant le plein écran**, et repasse à l'opacité pleine au survol.
+- **S'efface devant le plein écran — le vrai.** Une fenêtre compte comme plein écran si
+  elle n'est **pas agrandie** et couvre **tout l'écran où elle se trouve**, cet écran étant
+  celui du bandeau. La version 1 comparait sa taille à celle de l'écran *principal* : sur un
+  poste à deux écrans, un navigateur simplement agrandi sur le plus grand faisait disparaître
+  le bandeau.
+- **Icône de notification** en WinForms (`NotifyIcon`) dans le même fil que WPF : le
+  `Dispatcher` de WPF pompe aussi ses messages. Pastilles dessinées à la taille système,
+  libérées (`DestroyIcon`) à la sortie.
 
 ### Piège d'encodage — transposable à tout script PowerShell
 
