@@ -203,10 +203,35 @@ Un indicateur qui ment est pire qu'un indicateur absent. Ceux-ci sont connus :
 
 ---
 
-## Droits
+## Avant de l'utiliser — sécurité
 
-Aucune licence n'est accordée : **tous droits réservés**. Le code est publié pour être lu,
-pas pour être redistribué.
+Ce sont des scripts PowerShell : **lisez-les avant de les lancer**, c'est l'affaire de dix
+minutes et c'est la seule garantie réelle. Ce qu'ils font, exhaustivement :
 
-Fourni **sans aucune garantie**. C'est de l'outillage personnel mis au propre, pas un
-produit.
+- **Aucune élévation**, aucun service, aucune tâche planifiée, aucune écriture hors de votre
+  profil (`%LOCALAPPDATA%\Programs\HUD-Reseau`, `%APPDATA%\HUD-Reseau`, raccourcis, clé
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\HUD-Reseau`, et une valeur
+  `IsPromoted` pour afficher l'icône près de l'horloge).
+- **Trafic réseau** : un ping vers la passerelle que vous configurez, et une requête HTTPS
+  toutes les 90 s vers `api.ipify.org` (replis : `icanhazip.com`, `ifconfig.me`). Ces services
+  tiers voient votre IP publique — c'est précisément ce qu'on leur demande. **Rien d'autre ne
+  sort** : ni télémétrie, ni mise à jour automatique, ni envoi de vos réglages.
+- **`-ExecutionPolicy Bypass`** est utilisé pour lancer le script. Ce n'est pas une faille (la
+  stratégie d'exécution n'est pas une frontière de sécurité), mais cela veut dire que **Windows
+  ne vérifie aucune signature** : ne lancez que des fichiers obtenus depuis ce dépôt.
+- **Le HUD observe, il ne protège pas.** Un état vert dit que le trafic sortait par l'IP
+  attendue lors de la dernière mesure (jusqu'à 90 s plus tôt) ; ce n'est pas un *kill switch*
+  et il n'empêche aucune fuite. Pour bloquer le trafic hors tunnel, configurez WireGuard
+  (`AllowedIPs = 0.0.0.0/0` et la case « Bloquer le trafic non tunnelisé »).
+- Un antivirus comportemental peut signaler l'installation — voir [Antivirus](#antivirus).
+
+Vous avez trouvé un problème de sécurité ? Ouvrez une *issue* — ou, s'il est sensible, un
+signalement privé via l'onglet **Security** du dépôt.
+
+---
+
+## Licence
+
+[MIT](LICENSE) : utilisez, modifiez, redistribuez librement, en conservant la notice de
+copyright. Fourni **« tel quel », sans aucune garantie** : c'est de l'outillage personnel mis
+au propre, pas un produit, et vous l'exécutez sous votre propre responsabilité.
